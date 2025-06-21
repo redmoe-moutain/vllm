@@ -59,25 +59,6 @@ from .utils import (PPMissingLayer, is_pp_missing_parameter,
                     maybe_prefix)
 
 
-class Dots1RMSNorm(nn.Module):
-
-    def __init__(self, hidden_size, eps=1e-6):
-        """
-        Dots1RMSNorm is equivalent to T5LayerNorm
-        """
-        super().__init__()
-        self.weight = nn.Parameter(torch.ones(hidden_size))
-        self.variance_epsilon = eps
-
-    def forward(self, hidden_states):
-        input_dtype = hidden_states.dtype
-        hidden_states = hidden_states.to(torch.float32)
-        variance = hidden_states.pow(2).mean(-1, keepdim=True)
-        hidden_states = hidden_states * torch.rsqrt(variance +
-                                                    self.variance_epsilon)
-        return self.weight * hidden_states.to(input_dtype)
-
-
 class Dots1MLP(nn.Module):
 
     def __init__(
@@ -266,8 +247,8 @@ class Dots1Attention(nn.Module):
             quant_config=quant_config,
             prefix=f"{prefix}.attn",
         )
-        self.q_norm = Dots1RMSNorm(self.head_dim, eps=config.rms_norm_eps)
-        self.k_norm = Dots1RMSNorm(self.head_dim, eps=config.rms_norm_eps)
+        self.q_norm = RMSNorm(self.head_dim, eps=config.rms_norm_eps)
+        self.k_norm = RMSNorm(self.head_dim, eps=config.rms_norm_eps)
 
     def forward(self, positions: torch.Tensor,
                 hidden_states: torch.Tensor) -> torch.Tensor:
